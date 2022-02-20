@@ -5,37 +5,43 @@ const Time = require('Time');
 const CameraInfo = require('CameraInfo');
 const Reactive = require('Reactive');
 const Patches = require('Patches'); 
+const FaceTracking = require('FaceTracking'); 
 export const Diagnostics = require('Diagnostics');
 
 let startGame = false; 
-let speed = Reactive.vector(0,0.0005,0); 
+let speed = Reactive.vector(0.0002, 0.0006, 0); 
 let offset = Reactive.vector(0,0,0); 
 let previousTime = Reactive.val(0.0); 
 let currentTime = Time.ms; 
 let prevTime = Time.ms.history(1).at(0); 
-let prevPos;  
 
-function boundaryCheck(gameMesh, br, tl, max, dirty){
-	//Diagnostics.log("fuck");
+function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 	let xScaler = 1; 
 	let yScaler = 1; 
 
 	let boundarySet = false; 
-	//Diagnostics.watch("maxX", max.x); 
 
 	if (!max.x.eq(0).pinLastValue()) {
 		boundarySet = (true); 
 	}
 
 	if (boundarySet) {
-		let topValueSignal = tl.y; 
-		let bottomValueSignal = br.y;   
+		let leftValueSignalX = bottomLeft.x; 
+		let rightValueSignalX = topRight.x;   
 
 
+		let topValueSignalY = topRight.y; 
+		let bottomValueSignalY = bottomLeft.y;   
+
+
+		let xPosSignal = gameMesh.worldTransform.position.x; 
 		let yPosSignal = gameMesh.worldTransform.position.y; 
 
-		let above = yPosSignal.ge(topValueSignal);  
-		let below = yPosSignal.lt(bottomValueSignal); 
+		let above = yPosSignal.ge(topValueSignalY);  
+		let below = yPosSignal.lt(bottomValueSignalY); 
+
+		let right = xPosSignal.ge(rightValueSignalX); 
+		let left = xPosSignal.lt(leftValueSignalX); 
 
 
 		if (above.pinLastValue()) {
@@ -49,6 +55,19 @@ function boundaryCheck(gameMesh, br, tl, max, dirty){
 				yScaler = -1.0; 
 			}
 		}
+
+		if (left.pinLastValue()) {
+			if (speed.x.gt(0).pinLastValue()) {
+				xScaler = -1.0; 
+			}
+		}
+		if (right.pinLastValue()) {
+			if (speed.x.lt(0).pinLastValue()) {
+				xScaler = -1.0; 
+			}
+
+		}
+
 			//Diagnostics.log(ySpeed);
 		
 	}
@@ -59,7 +78,11 @@ function boundaryCheck(gameMesh, br, tl, max, dirty){
 (async function () {  // Enables async/await in JS [part 1]
 
 	const gameMesh = await Scene.root.findFirst('gameMesh');
-	prevPos = gameMesh.transform.position.history(1).at(0); 
+	const target = await Scene.root.findFirst('faceTracker0'); 
+	const face = FaceTracking.face(0); 
+	const targetPosSignal = face.cameraTransform.position; 
+	//gameMesh.positionZ = targetPosSignal.z; 
+	//const targetXY = Reactive.vector(targetPosSignal.x.pinLastValue(), targetPosSignal.y.pinLastValue(), 0); 
 
             //const fixedTimeStep = 1.0 / 60.0;
             //const maxSubSteps = 3;
@@ -78,22 +101,8 @@ function boundaryCheck(gameMesh, br, tl, max, dirty){
 
 	//const currentScreenPosSignal = await Scene.projectToScreen(gameMesh.worldTransform.position);  
 
-	let currentBoundBottomRight =  await Scene.unprojectToFocalPlane(max);
-	let currentBoundTopLeft =  await Scene.unprojectToFocalPlane(Reactive.point2d(0,0));
-
-
-
-
-	//let delta = currentTime.add(prevTime.mul(-1)).mul(0.1); 
-	//Diagnostics.watch("diff", delta); 
-	//let deltaOffset = Reactive.mul(speed, delta);
-	//offset =  Reactive.add(deltaOffset, offset); 
-	//gameMesh.transform.position = Reactive.add(prevPos, offset);  
-	//gameMesh.transform.position.y.monitor().subscribe((data)=>{
-		//let speedScaler= boundaryCheck(gameMesh, currentBoundBottomRight, currentBoundTopLeft, max, gameMesh.transform.position); 
-		//speed = Reactive.mul(speedScaler, speed); 
-	//}); 
-	
+	let currentBoundBottomLeft =  await Scene.unprojectToFocalPlane(max);
+	let currentBoundTopRight =  await Scene.unprojectToFocalPlane(Reactive.point2d(0,0));
 
 
 
@@ -101,13 +110,33 @@ function boundaryCheck(gameMesh, br, tl, max, dirty){
 		let delta = (data.newValue - data.oldValue); 
 		let deltaOffset = Reactive.mul(speed, Reactive.val(delta));
 		offset =  Reactive.add(deltaOffset, offset); 
-		//Diagnostics.watch("offset", offset.y); 
-		//Diagnostics.log(offset.y.pinLastValue(); 
-		gameMesh.transform.position = Reactive.add(start, offset);  
-		const speedScaler = boundaryCheck(gameMesh, currentBoundBottomRight, currentBoundTopLeft, max); 
-		speed = Reactive.mul(speedScaler, speed); 
-	})
 
+		const currentOffSetZ = targetPosSignal.z;  
+		const currentPosition = Reactive.add(start, offset); 
+		//const currentPositionUpdatedWithZ = Reactive.add(currentPosition, Reactive.vector(0, 0, currentOffSetZ.pinLastValue())); 
+
+		gameMesh.transform.position = currentPosition;  
+		//gameMesh.transform.position.z = target.worldTransform.position.z; 
+		const speedScaler = boundaryCheck(gameMesh, currentBoundBottomLeft, currentBoundTopRight, max); 
+		speed = Reactive.mul(speedScaler, speed); 
+
+	 	const xyPos = Reactive.vector(targetPosSignal.x, targetPosSignal.y, 0); 	
+		const toTargetDistance = xyPos.add(gameMesh.transform.position.mul(-1)); 
+
+
+		//Diagnostics.watch("currentX", xyPos.x); 
+		//Diagnostics.watch("currentY", xyPos.y); 
+		//toTargetDistance Reactive.val(0); 
+		//let targetDistance = toTargetDistance.pinLastValue(); 
+		//targetDistance.z = 0; 
+		//Diagnostics.log(toTargetDistance.magnitude().pinLastValue()); 
+		if (toTargetDistance.magnitude().lt(0.05).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
+			Diagnostics.log(toTargetDistance.magnitude().pinLastValue()); 
+			Diagnostics.log("getting close"); 
+			speed = Reactive.mul(0, speed); 
+		}
+
+	})
 
 	
 
