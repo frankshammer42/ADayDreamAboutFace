@@ -10,7 +10,7 @@ export const Diagnostics = require('Diagnostics');
 
 let faceCatched = false;
 let gameStarted = false; 
-const onBoardingSpeed = Reactive.vector(0, 0.00005, 0); 
+const onBoardingSpeed = Reactive.vector(0.00005, 0.00005, 0); 
 const onBoardingBoundY = 0.15; 
 
 let speed = Reactive.vector(0.0004, 0.0006, 0); 
@@ -123,7 +123,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 				speed = Reactive.mul(speedScaler, speed); 
 				const xyPos = Reactive.vector(targetPosSignal.x, targetPosSignal.y, 0); 	
 				const toTargetDistance = xyPos.add(gameMesh.transform.position.mul(-1)); 
-				if (toTargetDistance.magnitude().lt(0.045).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
+				if (toTargetDistance.magnitude().lt(0.02).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
 					speed = Reactive.mul(0, speed); 
 					faceCatched = true; 
 					Patches.inputs.setBoolean('faceCatched', faceCatched);
@@ -160,6 +160,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 				Diagnostics.log("Start the game"); 
 				gameMesh.transform.rotation = face.cameraTransform.rotation; 
 				gameStarted = true; 
+				Patches.inputs.setBoolean('gameStarted', gameStarted);
 			}
 
 		}
