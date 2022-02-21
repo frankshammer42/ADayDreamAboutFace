@@ -1,15 +1,17 @@
 #import <gradients>
 #import <sdf>
 
-vec4 main(std::Texture2d infoTex, std::Texture2d faceTex) {
+vec4 main(std::Texture2d infoTex, std::Texture2d faceTex, float visibility) {
 	vec2 uv = fragment(std::getVertexTexCoord());
 	vec2 sampleUV = uv; 
-	float speed = 0.5; 
+	float speed = 0.2; 
 	float timeDriver = fract(speed * std::getTime()) * 2.0; 
 	sampleUV.y = -1.0 + timeDriver + uv.y; 
 	vec4 infoColor = infoTex.sample(sampleUV);
-	vec4 faceColor = faceTex.sample(uv);
-	//vec4 finalColor = mix(infoColor, faceColor, 0.8); 
+	vec4 faceColor = faceTex.sample(uv); 
 
-  	return infoColor;
+	vec4 finalColor = infoColor + faceColor; 
+	finalColor.a = visibility; 
+
+  	return finalColor;
 }

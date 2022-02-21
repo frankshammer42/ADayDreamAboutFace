@@ -1,5 +1,5 @@
-//TODO: Create Bound 
-//TODO: Create Physics Based Movement 
+// TODO: Create on boarding 
+// TODO: Create ending 
 const Scene = require('Scene');
 const Time = require('Time');
 const CameraInfo = require('CameraInfo');
@@ -8,12 +8,20 @@ const Patches = require('Patches');
 const FaceTracking = require('FaceTracking'); 
 export const Diagnostics = require('Diagnostics');
 
-let startGame = false; 
-let speed = Reactive.vector(0.0002, 0.0006, 0); 
+let faceCatched = false;
+let gameStarted = false; 
+const onBoardingSpeed = Reactive.vector(-0.0001, 0.0001, 0); 
+const onBoardingBoundY = 0.15; 
+
+let speed = Reactive.vector(0.0004, 0.0006, 0); 
 let offset = Reactive.vector(0,0,0); 
 let previousTime = Reactive.val(0.0); 
 let currentTime = Time.ms; 
 let prevTime = Time.ms.history(1).at(0); 
+
+let currentSaturation = 0.0; 
+let catchedTime = 0.0; 
+let raisedDuration = 2000.0; 
 
 function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 	let xScaler = 1; 
@@ -81,48 +89,78 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 	const target = await Scene.root.findFirst('faceTracker0'); 
 	const face = FaceTracking.face(0); 
 	const targetPosSignal = face.cameraTransform.position; 
+	//Scene.addChild(gameMesh); 
+	//target.removeChild(gameMesh); 
+
+	
+	gameMesh.transform.rotation = face.cameraTransform.rotation; 
+	const justXy = face.cameraTransform.position.mul(Reactive.vector(1,1,0)).add(Reactive.vector(0,0,0.01)); 
+	gameMesh.transform.position = justXy; 
+	///gameMesh.transform.scale = face.cameraTransform.scale; 
+
 	
 
 	const start = Reactive.vector(0,0,0); 
-
 	const max = await Reactive.point2d(
 	  CameraInfo.previewSize.width,
 	  CameraInfo.previewSize.height); 
-
 	let screenWidth = 0; 
 	let screenHeight = 0; 
-
-	//const currentScreenPosSignal = await Scene.projectToScreen(gameMesh.worldTransform.position);  
-
 	let currentBoundBottomLeft =  await Scene.unprojectToFocalPlane(max);
 	let currentBoundTopRight =  await Scene.unprojectToFocalPlane(Reactive.point2d(0,0));
 
 
 
+
 	currentTime.monitor().subscribe((data) => {
-		let delta = (data.newValue - data.oldValue); 
-		let deltaOffset = Reactive.mul(speed, Reactive.val(delta));
-		offset =  Reactive.add(deltaOffset, offset); 
+		if (gameStarted) {
+			if (!faceCatched) {
+				let delta = (data.newValue - data.oldValue); 
+				let deltaOffset = Reactive.mul(speed, Reactive.val(delta));
+				offset =  Reactive.add(deltaOffset, offset); 
+				const currentPosition = Reactive.add(start, offset); 
+				gameMesh.transform.position = currentPosition;  
+				const speedScaler = boundaryCheck(gameMesh, currentBoundBottomLeft, currentBoundTopRight, max); 
+				speed = Reactive.mul(speedScaler, speed); 
+				const xyPos = Reactive.vector(targetPosSignal.x, targetPosSignal.y, 0); 	
+				const toTargetDistance = xyPos.add(gameMesh.transform.position.mul(-1)); 
+				if (toTargetDistance.magnitude().lt(0.045).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
+					speed = Reactive.mul(0, speed); 
+					faceCatched = true; 
+					Diagnostics.log("Face Catched"); 
+					catchedTime = Time.ms.pinLastValue(); 
+				}
 
-		const currentPosition = Reactive.add(start, offset); 
-		gameMesh.transform.position = currentPosition;  
-		//gameMesh.transform.position.z = target.worldTransform.position.z; 
-		const speedScaler = boundaryCheck(gameMesh, currentBoundBottomLeft, currentBoundTopRight, max); 
-		speed = Reactive.mul(speedScaler, speed); 
+			}
+			else {
+				gameMesh.transform.position = justXy; 
+				let passedTime = Time.ms.pinLastValue() - catchedTime; 
+				let durationPortion = passedTime / raisedDuration; 
+				if (durationPortion <= 1.0) {
+					currentSaturation = -1.0 + durationPortion; 
+					Diagnostics.log(currentSaturation);
+					Patches.inputs.setScalar('currentSaturation', currentSaturation);
+					Patches.inputs.setScalar('effectVisibility', durationPortion);
+				}
+			}
 
-	 	const xyPos = Reactive.vector(targetPosSignal.x, targetPosSignal.y, 0); 	
-		const toTargetDistance = xyPos.add(gameMesh.transform.position.mul(-1)); 
+		}
+		else {
+			let delta = (data.newValue - data.oldValue); 
+			let deltaOffset = Reactive.mul(onBoardingSpeed, Reactive.val(delta));
+			offset =  Reactive.add(deltaOffset, offset); 
+			const currentPosition = Reactive.add(start, offset); 
+			gameMesh.transform.position = currentPosition;  
+			if (currentPosition.y.pinLastValue() > onBoardingBoundY) {
+				Diagnostics.log("Start the game"); 
+				gameStarted = true; 
+			}
 
-		gameMesh.transform.rotation = face.cameraTransform.rotation; 
-
-
-		if (toTargetDistance.magnitude().lt(0.05).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
-			//Diagnostics.log(toTargetDistance.magnitude().pinLastValue()); 
-			//Diagnostics.log("getting close"); 
-			speed = Reactive.mul(0, speed); 
 		}
 
 	})
+
+
 
 	
 

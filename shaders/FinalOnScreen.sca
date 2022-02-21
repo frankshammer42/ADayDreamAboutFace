@@ -1,0 +1,39 @@
+
+#import <gradients>
+#import <sdf>
+
+vec4 main(std::Texture2d screenTexture, std::Texture2d leftText, std::Texture2d rightText, float visibility) {
+	vec2 uv = fragment(std::getVertexTexCoord());
+	float speed = 0.2; 
+
+	vec2 sampleUVLeft = uv; 
+	float timeDriver = fract(speed * std::getTime()) * 2.0; 
+	sampleUVLeft.y = -1.0 + timeDriver + uv.y; 
+
+	vec2 sampleUVRight = uv; 
+	sampleUVRight.y = -timeDriver + uv.y + 1.0; 
+
+
+	vec4 screenColor = screenTexture.sample(uv); 
+
+	vec4 leftInfoColor = leftText.sample(sampleUVLeft);  
+	vec4 rightInfoColor = rightText.sample(sampleUVRight); 
+	vec4 effectColor = vec4(0.0, 0.0, 0.0, 0.0); 
+	float haveMark = 0.0; 
+	if (leftInfoColor.x > 0.9) {
+		effectColor = leftInfoColor * vec4(1.0, 1.0, 0.0, 1.0); 
+		haveMark = 1.0; 
+	}
+	if (rightInfoColor.x > 0.9) {
+		effectColor = rightInfoColor * vec4(1.0, 0.0, 0.0, 1.0); 
+		haveMark = 1.0; 
+	}
+
+	vec4 finalColor = screenColor + visibility * effectColor; 
+	if (screenColor.x > 0.9 && haveMark == 1.0 && visibility > 0.0) {
+		finalColor = effectColor * visibility; 
+	}
+
+	return finalColor;
+
+}
