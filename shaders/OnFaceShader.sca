@@ -1,0 +1,15 @@
+#import <gradients>
+#import <sdf>
+
+vec4 main(std::Texture2d faceTex) {
+	vec2 uv = fragment(std::getVertexTexCoord());
+	vec2 sampleUV = uv; 
+	float speed = 0.5; 
+	float timeDriver = fract(speed * std::getTime()) * 2.0; 
+	sampleUV.y = -1.0 + timeDriver + uv.y; 
+	vec4 faceColor = faceTex.sample(sampleUV);
+
+	vec4 color = vec4(1.0, 1.0, 0.0, 1.0); 
+  	return faceColor;
+}
+

@@ -81,13 +81,6 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 	const target = await Scene.root.findFirst('faceTracker0'); 
 	const face = FaceTracking.face(0); 
 	const targetPosSignal = face.cameraTransform.position; 
-	//gameMesh.positionZ = targetPosSignal.z; 
-	//const targetXY = Reactive.vector(targetPosSignal.x.pinLastValue(), targetPosSignal.y.pinLastValue(), 0); 
-
-            //const fixedTimeStep = 1.0 / 60.0;
-            //const maxSubSteps = 3;
-            //const timeInterval = 30;
-	//Diagnostics.watch("position", gameMesh.worldTransform.position.y); 
 	
 
 	const start = Reactive.vector(0,0,0); 
@@ -111,10 +104,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 		let deltaOffset = Reactive.mul(speed, Reactive.val(delta));
 		offset =  Reactive.add(deltaOffset, offset); 
 
-		const currentOffSetZ = targetPosSignal.z;  
 		const currentPosition = Reactive.add(start, offset); 
-		//const currentPositionUpdatedWithZ = Reactive.add(currentPosition, Reactive.vector(0, 0, currentOffSetZ.pinLastValue())); 
-
 		gameMesh.transform.position = currentPosition;  
 		//gameMesh.transform.position.z = target.worldTransform.position.z; 
 		const speedScaler = boundaryCheck(gameMesh, currentBoundBottomLeft, currentBoundTopRight, max); 
@@ -123,16 +113,12 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 	 	const xyPos = Reactive.vector(targetPosSignal.x, targetPosSignal.y, 0); 	
 		const toTargetDistance = xyPos.add(gameMesh.transform.position.mul(-1)); 
 
+		gameMesh.transform.rotation = face.cameraTransform.rotation; 
 
-		//Diagnostics.watch("currentX", xyPos.x); 
-		//Diagnostics.watch("currentY", xyPos.y); 
-		//toTargetDistance Reactive.val(0); 
-		//let targetDistance = toTargetDistance.pinLastValue(); 
-		//targetDistance.z = 0; 
-		//Diagnostics.log(toTargetDistance.magnitude().pinLastValue()); 
+
 		if (toTargetDistance.magnitude().lt(0.05).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
-			Diagnostics.log(toTargetDistance.magnitude().pinLastValue()); 
-			Diagnostics.log("getting close"); 
+			//Diagnostics.log(toTargetDistance.magnitude().pinLastValue()); 
+			//Diagnostics.log("getting close"); 
 			speed = Reactive.mul(0, speed); 
 		}
 
