@@ -10,7 +10,7 @@ export const Diagnostics = require('Diagnostics');
 
 let faceCatched = false;
 let gameStarted = false; 
-const onBoardingSpeed = Reactive.vector(-0.0001, 0.0001, 0); 
+const onBoardingSpeed = Reactive.vector(0, 0.00005, 0); 
 const onBoardingBoundY = 0.15; 
 
 let speed = Reactive.vector(0.0004, 0.0006, 0); 
@@ -19,7 +19,7 @@ let previousTime = Reactive.val(0.0);
 let currentTime = Time.ms; 
 let prevTime = Time.ms.history(1).at(0); 
 
-let currentSaturation = 0.0; 
+let currentSaturation = -1; 
 let catchedTime = 0.0; 
 let raisedDuration = 2000.0; 
 
@@ -84,7 +84,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 
 
 (async function () {  // Enables async/await in JS [part 1]
-
+	await Patches.inputs.setScalar('currentSaturation', currentSaturation);
 	const gameMesh = await Scene.root.findFirst('gameMesh');
 	const target = await Scene.root.findFirst('faceTracker0'); 
 	const face = FaceTracking.face(0); 
@@ -93,7 +93,6 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 	//target.removeChild(gameMesh); 
 
 	
-	gameMesh.transform.rotation = face.cameraTransform.rotation; 
 	const justXy = face.cameraTransform.position.mul(Reactive.vector(1,1,0)).add(Reactive.vector(0,0,0.01)); 
 	gameMesh.transform.position = justXy; 
 	///gameMesh.transform.scale = face.cameraTransform.scale; 
@@ -127,7 +126,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 				if (toTargetDistance.magnitude().lt(0.045).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
 					speed = Reactive.mul(0, speed); 
 					faceCatched = true; 
-					Diagnostics.log("Face Catched"); 
+					Patches.inputs.setBoolean('faceCatched', faceCatched);
 					catchedTime = Time.ms.pinLastValue(); 
 				}
 
@@ -150,9 +149,16 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 			let deltaOffset = Reactive.mul(onBoardingSpeed, Reactive.val(delta));
 			offset =  Reactive.add(deltaOffset, offset); 
 			const currentPosition = Reactive.add(start, offset); 
+			const currentY = offset.y.pinLastValue(); 
+
+			//let portion = - currentY / onBoardingBoundY; 
+			//Patches.inputs.setScalar('currentSaturation', portion);
+			
+
 			gameMesh.transform.position = currentPosition;  
 			if (currentPosition.y.pinLastValue() > onBoardingBoundY) {
 				Diagnostics.log("Start the game"); 
+				gameMesh.transform.rotation = face.cameraTransform.rotation; 
 				gameStarted = true; 
 			}
 
