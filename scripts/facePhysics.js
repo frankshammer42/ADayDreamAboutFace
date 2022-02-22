@@ -123,7 +123,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 				speed = Reactive.mul(speedScaler, speed); 
 				const xyPos = Reactive.vector(targetPosSignal.x, targetPosSignal.y, 0); 	
 				const toTargetDistance = xyPos.add(gameMesh.transform.position.mul(-1)); 
-				if (toTargetDistance.magnitude().lt(0.02).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
+				if (toTargetDistance.magnitude().lt(0.04).pinLastValue() && currentTime.gt(2000).pinLastValue()) {
 					speed = Reactive.mul(0, speed); 
 					faceCatched = true; 
 					Patches.inputs.setBoolean('faceCatched', faceCatched);
@@ -137,7 +137,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 				let durationPortion = passedTime / raisedDuration; 
 				if (durationPortion <= 1.0) {
 					currentSaturation = -1.0 + durationPortion; 
-					Diagnostics.log(currentSaturation);
+					//Diagnostics.log(currentSaturation);
 					Patches.inputs.setScalar('currentSaturation', currentSaturation);
 					Patches.inputs.setScalar('effectVisibility', durationPortion);
 				}
@@ -157,7 +157,7 @@ function boundaryCheck(gameMesh, bottomLeft, topRight, max, dirty){
 
 			gameMesh.transform.position = currentPosition;  
 			if (currentPosition.y.pinLastValue() > onBoardingBoundY) {
-				Diagnostics.log("Start the game"); 
+				//Diagnostics.log("Start the game"); 
 				gameMesh.transform.rotation = face.cameraTransform.rotation; 
 				gameStarted = true; 
 				Patches.inputs.setBoolean('gameStarted', gameStarted);
